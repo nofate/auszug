@@ -1,0 +1,10 @@
+# Dirty context
+run
+
+# Gradle
+.gradle
+build/
+
+# IDE
+.idea/
+*.iml
