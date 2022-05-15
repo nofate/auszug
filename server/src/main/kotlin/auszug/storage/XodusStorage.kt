@@ -14,8 +14,8 @@ class XodusStorage(dataDir: String) {
 
     private val environment = Environments.newInstance(dataDir)
     //todo: ключ транзакции: user + id
-    val transactions = ConcurrentHashMap<Long, Transaction>()
-    val idCounter = AtomicLong(0);
+    private val transactions = ConcurrentHashMap<Long, Transaction>()
+    private val idCounter = AtomicLong(0);
 
     fun startTransaction(): Long {
         val transaction = environment.beginTransaction()

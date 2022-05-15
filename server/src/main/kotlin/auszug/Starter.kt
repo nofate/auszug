@@ -1,3 +1,4 @@
+import auszug.web.UncaughtExceptionHandler
 import auszug.web.storageModule
 import io.ktor.serialization.kotlinx.json.*
 import io.ktor.server.application.*
@@ -13,6 +14,8 @@ class Starter {
 }
 
 fun main() {
+    Thread.setDefaultUncaughtExceptionHandler(UncaughtExceptionHandler())
+
     embeddedServer(Netty, port = 8080,  configure = {
         connectionGroupSize = 1
     }) {
