@@ -21,27 +21,30 @@ fun Route.storageRouting() {
     route("/v1") {
 
         route("/storage") {
-            get("/{id}") {
+            get("/{storeName}/{id}") {
                 val key = call.parameters["id"] ?: throw IllegalArgumentException()
+                val storeName = call.parameters["storeName"] ?: throw IllegalArgumentException()
                 val tranId = call.request.queryParameters["tranId"]?.toLong() ?: throw IllegalArgumentException()
 
-                val value = store.get(tranId, key)
+                val value = store.get(tranId, storeName, key)
                 call.respondText(value ?: "{}", ContentType.Application.Json)
             }
 
-            post("/{id}") {
+            post("/{storeName}/{id}") {
                 val key = call.parameters["id"] ?: throw IllegalArgumentException()
+                val storeName = call.parameters["storeName"] ?: throw IllegalArgumentException()
                 val tranId = call.request.queryParameters["tranId"]?.toLong() ?: throw IllegalArgumentException()
                 val body = call.receiveText()
-                store.put(tranId, key, body)
+                store.put(tranId, key, storeName, body)
                 call.respond(HttpStatusCode.Created)
             }
 
-            delete("/{id}") {
+            delete("/{storeName}/{id}") {
                 val key = call.parameters["id"] ?: throw IllegalArgumentException()
+                val storeName = call.parameters["storeName"] ?: throw IllegalArgumentException()
                 val tranId = call.request.queryParameters["tranId"]?.toLong() ?: throw IllegalArgumentException()
 
-                store.delete(tranId, key)
+                store.delete(tranId, storeName, key)
                 call.respond(HttpStatusCode.OK)
             }
         }

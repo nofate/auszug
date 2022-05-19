@@ -32,26 +32,26 @@ class XodusStorage(dataDir: String) {
         transactions.remove(tranId)?.abort()
     }
 
-    fun put(tranId: Long, key: String, value: String) {
+    fun put(tranId: Long, storeName: String, key: String, value: String) {
         val trx = transactions[tranId]
         trx?.let {
-            val store = environment.openStore("store", StoreConfig.WITHOUT_DUPLICATES, it)
+            val store = environment.openStore(storeName, StoreConfig.WITHOUT_DUPLICATES, it)
             store.put(it, StringBinding.stringToEntry(key), StringBinding.stringToEntry(value))
         }
     }
 
-    fun get(tranId: Long, key: String): String? {
+    fun get(tranId: Long, storeName: String, key: String): String? {
         val trx = transactions[tranId]
         return trx?.let {
-            val store = environment.openStore("store", StoreConfig.WITHOUT_DUPLICATES, it)
+            val store = environment.openStore(storeName, StoreConfig.WITHOUT_DUPLICATES, it)
             return store.get(it, StringBinding.stringToEntry(key))?.let(StringBinding::entryToString)
         }
     }
 
-    fun delete(tranId: Long, key: String): Boolean? {
+    fun delete(tranId: Long, storeName: String, key: String): Boolean? {
         val trx = transactions[tranId]
         return trx?.let {
-            val store = environment.openStore("store", StoreConfig.WITHOUT_DUPLICATES, it)
+            val store = environment.openStore(storeName, StoreConfig.WITHOUT_DUPLICATES, it)
             return store.delete(it, StringBinding.stringToEntry(key))
         }
     }
@@ -66,24 +66,24 @@ fun main() {
     val xodus = XodusStorage("/home/nofate/work/private/auszug/run/")
 
     xodus.startTransaction().let { tid ->
-        xodus.put(tid, "foo", "some foo")
+        xodus.put(tid, "Foo", "foo", "some foo")
         xodus.rollback(tid)
     }
 
     xodus.startTransaction().let { tid ->
-        val res = xodus.get(tid, "foo")
+        val res = xodus.get(tid, "Foo", "foo")
         println(res)
         xodus.commit(tid)
     }
 
     xodus.startTransaction().let { tid ->
-        val res = xodus.delete(tid, "foo")
+        val res = xodus.delete(tid, "Foo", "foo")
         println(res)
         xodus.commit(tid)
     }
 
     xodus.startTransaction().let { tid ->
-        val res = xodus.get(tid, "foo")
+        val res = xodus.get(tid, "Foo", "foo")
         println(res)
         xodus.commit(tid)
     }

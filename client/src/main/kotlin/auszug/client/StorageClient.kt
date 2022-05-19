@@ -39,23 +39,23 @@ class StorageClient(baseUri: String, username: String, password: String) {
         val response = client.post("$URI/transaction/$tranId/rollback")
     }
 
-    suspend inline fun <reified T> put(tranId: Long, key: String, value: T) {
-        val response = client.post("$URI/storage/$key?tranId=$tranId") {
+    suspend inline fun <reified T> put(tranId: Long, store: String, key: String, value: T) {
+        val response = client.post("$URI/storage/$store/$key?tranId=$tranId") {
             contentType(ContentType.Application.Json)
             setBody(value)
         }
     }
 
-    suspend inline fun <reified T> get(tranId: Long, key: String): T? {
-        val response = client.get("$URI/storage/$key?tranId=$tranId") {
+    suspend inline fun <reified T> get(tranId: Long, store: String, key: String): T? {
+        val response = client.get("$URI/storage/$store/$key?tranId=$tranId") {
             accept(ContentType.Application.Json)
         }
         val obj: T = response.body()
         return obj
     }
 
-    suspend fun <T> delete(tranId: Long, key: String): Boolean {
-        val response = client.delete("$URI/storage/$key?tranId=$tranId")
+    suspend fun <T> delete(tranId: Long, store: String, key: String): Boolean {
+        val response = client.delete("$URI/storage/$store/$key?tranId=$tranId")
         return true
     }
 }
@@ -71,12 +71,12 @@ data class Bar(val bar: String)
 fun main() = runBlocking {
     val client = StorageClient("http://localhost:8080", "", "")
     client.startTransaction().let { tranId ->
-        client.put(tranId, "bar", Bar("brrrrr"))
+        client.put(tranId, "bar", "BAR", Bar("brrrrr"))
         client.commit(tranId)
     }
 
     client.startTransaction().let { tranId ->
-        val bar: Bar? = client.get(tranId, "bar")
+        val bar: Bar? = client.get(tranId, "Bar", "bar")
         println(bar)
         client.commit(tranId)
     }
