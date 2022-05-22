@@ -51,14 +51,14 @@ class StorageClient(baseUri: String, username: String, password: String) {
     }
 
     suspend inline fun <reified T> put(tranId: Long, store: String, key: String, value: T) {
-        val response = client.post("$URI/storage/$store/$key?tranId=$tranId") {
+        val response = client.post("$URI/transaction/$tranId/storage/$store/$key") {
             contentType(ContentType.Application.Json)
             setBody(value)
         }
     }
 
     suspend inline fun <reified T> get(tranId: Long, store: String, key: String): T? {
-        val response = client.get("$URI/storage/$store/$key?tranId=$tranId") {
+        val response = client.get("$URI/transaction/$tranId/storage/$store/$key") {
             accept(ContentType.Application.Json)
         }
 
@@ -71,7 +71,7 @@ class StorageClient(baseUri: String, username: String, password: String) {
     }
 
     suspend fun <T> delete(tranId: Long, store: String, key: String): Boolean {
-        val response = client.delete("$URI/storage/$store/$key?tranId=$tranId")
+        val response = client.delete("$URI/transaction/$tranId/storage/$store/$key")
         return true
     }
 }

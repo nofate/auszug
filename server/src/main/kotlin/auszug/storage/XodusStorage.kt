@@ -1,10 +1,6 @@
 package auszug.storage
 
-import io.ktor.server.auth.*
-import jetbrains.exodus.ByteIterable
-import jetbrains.exodus.bindings.ByteBinding
 import jetbrains.exodus.bindings.StringBinding
-import jetbrains.exodus.env.Environment
 import jetbrains.exodus.env.Environments
 import jetbrains.exodus.env.StoreConfig
 import jetbrains.exodus.env.Transaction
