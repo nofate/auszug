@@ -3,11 +3,16 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 plugins {
     kotlin("jvm") version "1.5.10"
     kotlin("plugin.serialization") version "1.6.20"
+    application
+    id("com.github.johnrengelman.shadow") version "7.1.2"
 }
 
 group = "auszug"
 version = "1.0-SNAPSHOT"
-val ktorVersion = "2.0.0"
+
+application {
+    mainClass.set("io.ktor.server.netty.EngineMain")
+}
 
 
 repositories {
@@ -17,6 +22,7 @@ repositories {
     }
 }
 
+val ktorVersion = "2.0.0"
 dependencies {
     testImplementation(kotlin("test"))
     implementation(kotlin("stdlib-jdk8"))
