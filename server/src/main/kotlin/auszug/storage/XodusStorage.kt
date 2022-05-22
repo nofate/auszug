@@ -4,6 +4,7 @@ import jetbrains.exodus.bindings.StringBinding
 import jetbrains.exodus.env.Environments
 import jetbrains.exodus.env.StoreConfig
 import jetbrains.exodus.env.Transaction
+import org.slf4j.LoggerFactory
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicLong
 
@@ -12,26 +13,31 @@ data class TransactionKey(val username: String, val transactionId: Long)
 
 class XodusStorage(dataDir: String) {
 
+    val log = LoggerFactory.getLogger(XodusStorage::class.java)
+
     private val environment = Environments.newInstance(dataDir)
     private val transactions = ConcurrentHashMap<TransactionKey, Transaction>()
     private val idCounter = AtomicLong(0);
 
     fun startTransaction(username: String, readOnly: Boolean): Long {
+        val tranId = idCounter.incrementAndGet()
+        log.debug("Starting transaction {} for user '{}', readonly={}", tranId, username, readOnly)
         val transaction = if (readOnly) {
             environment.beginReadonlyTransaction()
         } else {
             environment.beginTransaction()
         }
-        val tranId = idCounter.incrementAndGet();
         transactions[TransactionKey(username, tranId)] = transaction
         return tranId
     }
 
     fun commit(transactionKey: TransactionKey) {
+        log.debug("committing transaction {} for user '{}'", transactionKey.transactionId, transactionKey.username)
         transactions.remove(transactionKey)?.commit()
     }
 
     fun rollback(transactionKey: TransactionKey) {
+        log.debug("rolling back transaction {} for user '{}'", transactionKey.transactionId, transactionKey.username)
         transactions.remove(transactionKey)?.abort()
     }
 

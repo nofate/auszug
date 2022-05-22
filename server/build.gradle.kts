@@ -29,7 +29,8 @@ dependencies {
     implementation("org.jetbrains.xodus:xodus-openAPI:2.0.1")
     implementation("org.jetbrains.xodus:xodus-environment:2.0.1")
     implementation("org.jetbrains.xodus:xodus-entity-store:2.0.1")
-    implementation("ch.qos.logback:logback-classic:1.2.7")
+    implementation("org.apache.logging.log4j:log4j-core:2.17.2")
+    implementation("org.apache.logging.log4j:log4j-slf4j-impl:2.17.2")
 }
 
 tasks.test {
