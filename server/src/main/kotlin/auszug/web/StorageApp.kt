@@ -1,15 +1,18 @@
 package auszug.web
 
+import auszug.auth.UserRoleAuth
+import auszug.auth.parseUsers
 import auszug.storage.XodusStorage
 import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
 import io.ktor.server.application.*
+import io.ktor.server.auth.*
 import io.ktor.server.plugins.contentnegotiation.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
+import io.ktor.util.*
 import kotlinx.serialization.Serializable
-import java.util.concurrent.ConcurrentHashMap
 
 
 val store = XodusStorage("/home/nofate/work/private/auszug/run/");
@@ -27,7 +30,11 @@ fun Route.storageRouting() {
                 val tranId = call.request.queryParameters["tranId"]?.toLong() ?: throw IllegalArgumentException()
 
                 val value = store.get(tranId, storeName, key)
-                call.respondText(value ?: "{}", ContentType.Application.Json)
+                if (value != null) {
+                    call.respondText(value, ContentType.Application.Json)
+                } else {
+                    call.respond(HttpStatusCode.NotFound)
+                }
             }
 
             post("/{storeName}/{id}") {
@@ -72,14 +79,31 @@ fun Route.storageRouting() {
 
 fun Application.configureRouting() {
     routing {
-        storageRouting()
+        authenticate("auth-basic") {
+            storageRouting()
+        }
     }
 }
 
 
 fun Application.storageModule() {
+    val userRoleAuth = UserRoleAuth(
+        getDigestFunction("SHA-256") { "auszug${it.length}" },
+        environment.config.parseUsers()
+    )
+
     configureRouting()
+
     install(ContentNegotiation) {
         json()
+    }
+
+    install(Authentication) {
+        basic("auth-basic") {
+            realm = "Storage API"
+            validate { creds ->
+                userRoleAuth.authenticate(creds)
+            }
+        }
     }
 }
