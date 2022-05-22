@@ -1,7 +1,10 @@
 package auszug.web
 
+import auszug.auth.Role
 import auszug.auth.UserRoleAuth
+import auszug.auth.UserRolePrincipal
 import auszug.auth.parseUsers
+import auszug.storage.TransactionKey
 import auszug.storage.XodusStorage
 import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
@@ -20,6 +23,22 @@ val store = XodusStorage("/home/nofate/work/private/auszug/run/");
 @Serializable
 data class TransactionResponse(val tranId: Long)
 
+
+fun createTransactionKey(call: ApplicationCall): TransactionKey {
+    val tranId = call.request.queryParameters["tranId"]?.toLong() ?: throw IllegalArgumentException()
+    val username = ensurePrincipal(call).name
+    return TransactionKey(username, tranId)
+}
+
+fun ensurePrincipal(call: ApplicationCall): UserRolePrincipal {
+    val principal = call.principal<UserRolePrincipal>()
+    if (principal != null) {
+        return principal
+    } else {
+        throw IllegalStateException()
+    }
+}
+
 fun Route.storageRouting() {
     route("/v1") {
 
@@ -27,9 +46,7 @@ fun Route.storageRouting() {
             get("/{storeName}/{id}") {
                 val key = call.parameters["id"] ?: throw IllegalArgumentException()
                 val storeName = call.parameters["storeName"] ?: throw IllegalArgumentException()
-                val tranId = call.request.queryParameters["tranId"]?.toLong() ?: throw IllegalArgumentException()
-
-                val value = store.get(tranId, storeName, key)
+                val value = store.get(createTransactionKey(call), storeName, key)
                 if (value != null) {
                     call.respondText(value, ContentType.Application.Json)
                 } else {
@@ -42,7 +59,7 @@ fun Route.storageRouting() {
                 val storeName = call.parameters["storeName"] ?: throw IllegalArgumentException()
                 val tranId = call.request.queryParameters["tranId"]?.toLong() ?: throw IllegalArgumentException()
                 val body = call.receiveText()
-                store.put(tranId, key, storeName, body)
+                store.put(createTransactionKey(call), key, storeName, body)
                 call.respond(HttpStatusCode.Created)
             }
 
@@ -51,26 +68,25 @@ fun Route.storageRouting() {
                 val storeName = call.parameters["storeName"] ?: throw IllegalArgumentException()
                 val tranId = call.request.queryParameters["tranId"]?.toLong() ?: throw IllegalArgumentException()
 
-                store.delete(tranId, storeName, key)
+                store.delete(createTransactionKey(call), storeName, key)
                 call.respond(HttpStatusCode.OK)
             }
         }
 
         route("/transaction") {
             post() {
-                val tranId = store.startTransaction()
+                val (username, role) = ensurePrincipal(call)
+                val tranId = store.startTransaction(username, role == Role.READ_ONLY)
                 call.respond(HttpStatusCode.Created, TransactionResponse(tranId))
             }
 
             post("/{id}/commit") {
-                val tranId = call.parameters["id"]?.toLong() ?: throw IllegalArgumentException()
-                store.commit(tranId)
+                store.commit(createTransactionKey(call))
                 call.respond(HttpStatusCode.OK)
             }
 
             post("/{id}/rollback") {
-                val tranId = call.parameters["id"]?.toLong() ?: throw IllegalArgumentException()
-                store.rollback(tranId)
+                store.rollback(createTransactionKey(call))
                 call.respond(HttpStatusCode.OK)
             }
         }

@@ -1,5 +1,6 @@
 package auszug.storage
 
+import io.ktor.server.auth.*
 import jetbrains.exodus.ByteIterable
 import jetbrains.exodus.bindings.ByteBinding
 import jetbrains.exodus.bindings.StringBinding
@@ -10,46 +11,52 @@ import jetbrains.exodus.env.Transaction
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicLong
 
+
+data class TransactionKey(val username: String, val transactionId: Long)
+
 class XodusStorage(dataDir: String) {
 
     private val environment = Environments.newInstance(dataDir)
-    //todo: ключ транзакции: user + id
-    private val transactions = ConcurrentHashMap<Long, Transaction>()
+    private val transactions = ConcurrentHashMap<TransactionKey, Transaction>()
     private val idCounter = AtomicLong(0);
 
-    fun startTransaction(): Long {
-        val transaction = environment.beginTransaction()
+    fun startTransaction(username: String, readOnly: Boolean): Long {
+        val transaction = if (readOnly) {
+            environment.beginReadonlyTransaction()
+        } else {
+            environment.beginTransaction()
+        }
         val tranId = idCounter.incrementAndGet();
-        transactions[tranId] = transaction
+        transactions[TransactionKey(username, tranId)] = transaction
         return tranId
     }
 
-    fun commit(tranId: Long) {
-        transactions.remove(tranId)?.commit()
+    fun commit(transactionKey: TransactionKey) {
+        transactions.remove(transactionKey)?.commit()
     }
 
-    fun rollback(tranId: Long) {
-        transactions.remove(tranId)?.abort()
+    fun rollback(transactionKey: TransactionKey) {
+        transactions.remove(transactionKey)?.abort()
     }
 
-    fun put(tranId: Long, storeName: String, key: String, value: String) {
-        val trx = transactions[tranId]
+    fun put(transactionKey: TransactionKey, storeName: String, key: String, value: String) {
+        val trx = transactions[transactionKey]
         trx?.let {
             val store = environment.openStore(storeName, StoreConfig.WITHOUT_DUPLICATES, it)
             store.put(it, StringBinding.stringToEntry(key), StringBinding.stringToEntry(value))
         }
     }
 
-    fun get(tranId: Long, storeName: String, key: String): String? {
-        val trx = transactions[tranId]
+    fun get(transactionKey: TransactionKey, storeName: String, key: String): String? {
+        val trx = transactions[transactionKey]
         return trx?.let {
             val store = environment.openStore(storeName, StoreConfig.WITHOUT_DUPLICATES, it)
             return store.get(it, StringBinding.stringToEntry(key))?.let(StringBinding::entryToString)
         }
     }
 
-    fun delete(tranId: Long, storeName: String, key: String): Boolean? {
-        val trx = transactions[tranId]
+    fun delete(transactionKey: TransactionKey, storeName: String, key: String): Boolean? {
+        val trx = transactions[transactionKey]
         return trx?.let {
             val store = environment.openStore(storeName, StoreConfig.WITHOUT_DUPLICATES, it)
             return store.delete(it, StringBinding.stringToEntry(key))
@@ -58,33 +65,5 @@ class XodusStorage(dataDir: String) {
 
     fun shutdown() {
         environment.close()
-    }
-}
-
-
-fun main() {
-    val xodus = XodusStorage("/home/nofate/work/private/auszug/run/")
-
-    xodus.startTransaction().let { tid ->
-        xodus.put(tid, "Foo", "foo", "some foo")
-        xodus.rollback(tid)
-    }
-
-    xodus.startTransaction().let { tid ->
-        val res = xodus.get(tid, "Foo", "foo")
-        println(res)
-        xodus.commit(tid)
-    }
-
-    xodus.startTransaction().let { tid ->
-        val res = xodus.delete(tid, "Foo", "foo")
-        println(res)
-        xodus.commit(tid)
-    }
-
-    xodus.startTransaction().let { tid ->
-        val res = xodus.get(tid, "Foo", "foo")
-        println(res)
-        xodus.commit(tid)
     }
 }
