@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration>
+
+    <Properties>
+        <Property name="layoutPattern">%level{ERROR=E, WARN=W, INFO=I, DEBUG=D, TRACE=T} %d{yyMMdd HHmmss.SSS} [%t] %notEmpty{%mdc }%c{1.} - %msg%n</Property>
+        <Property name="logPattern">.%d{yyyyMMdd}.%i.log</Property>
+        <Property name="maxFileSize">200 MB</Property>
+        <Property name="totalFiles">100</Property>
+    </Properties>
+
+    <Appenders>
+        <Console name="consoleLog" target="SYSTEM_OUT">
+            <PatternLayout pattern="${layoutPattern}" />
+            <ThresholdFilter level="TRACE" onMatch="ACCEPT"/>
+        </Console>
+    </Appenders>
+
+    <Loggers>
+        <Root level="DEBUG">
+            <AppenderRef ref="consoleLog" />
+        </Root>
+    </Loggers>
+</Configuration>
