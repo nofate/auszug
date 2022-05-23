@@ -18,14 +18,7 @@ repositories {
 val ktorVersion = "2.0.0"
 dependencies {
     testImplementation(kotlin("test"))
-    implementation(kotlin("stdlib-jdk8"))
-    implementation("io.ktor:ktor-client-core:$ktorVersion")
-    implementation("io.ktor:ktor-client-cio:$ktorVersion")
-    implementation("io.ktor:ktor-client-auth:$ktorVersion")
-    implementation("io.ktor:ktor-client-content-negotiation:$ktorVersion")
-    implementation("io.ktor:ktor-serialization-kotlinx-json:$ktorVersion")
-    implementation("io.ktor:ktor-serialization-kotlinx-cbor:$ktorVersion")
-    implementation(project(":common"))
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-core-jvm:1.3.2")
 }
 
 tasks.test {

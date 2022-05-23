@@ -1,2 +1,2 @@
 rootProject.name = "auszug"
-include("server", "client")
+include("server", "client", "common")

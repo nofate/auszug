@@ -1,5 +1,9 @@
 package auszug.client
 
+import auzug.common.API_AUTH_REALM
+import auzug.common.API_PATH
+import auzug.common.FailureResponse
+import auzug.common.TransactionResponse
 import io.ktor.client.*
 import io.ktor.client.call.*
 import io.ktor.client.engine.cio.*
@@ -8,21 +12,20 @@ import io.ktor.client.plugins.auth.providers.*
 import io.ktor.client.plugins.contentnegotiation.*
 import io.ktor.client.request.*
 import io.ktor.http.*
+import io.ktor.serialization.kotlinx.cbor.*
 import io.ktor.serialization.kotlinx.json.*
-import kotlinx.coroutines.runBlocking
-import kotlinx.serialization.Serializable
 
 
-@Serializable
-data class TransactionResponse(val tranId: Long)
+class StorageClient(baseUri: String, val client: HttpClient) {
 
-class StorageClient(baseUri: String, username: String, password: String) {
+    val API_URI = "${baseUri}${API_PATH}"
 
-    val API_PATH = "/v1"
-    val URI = "${baseUri}${API_PATH}"
+    constructor(baseUri: String, username: String, password: String)
+            : this(baseUri, HttpClient(CIO) {
+        followRedirects = true
 
-    val client = HttpClient(CIO) {
         install(ContentNegotiation) {
+            cbor()
             json()
         }
         install(Auth) {
@@ -31,47 +34,63 @@ class StorageClient(baseUri: String, username: String, password: String) {
                     BasicAuthCredentials(username = username, password = password)
                 }
                 sendWithoutRequest { true }
-                realm = "Storage API"
+                realm = API_AUTH_REALM
             }
         }
-    }
+    })
 
-    suspend fun startTransaction(): Long {
-        val response = client.post("$URI/transaction")
+
+    suspend fun startTransaction(): ClientTransaction {
+        val response = client.post("$API_URI/transaction")
         val tran: TransactionResponse = response.body()
-        return tran.tranId
+        return ClientTransaction(tran.tranId, tran.readOnly)
     }
 
-    suspend fun commit(tranId: Long) {
-        val response = client.post("$URI/transaction/$tranId/commit")
-    }
+    inner class ClientTransaction(val tranId: Long, val readOnly: Boolean) {
 
-    suspend fun rollback(tranId: Long) {
-        val response = client.post("$URI/transaction/$tranId/rollback")
-    }
-
-    suspend inline fun <reified T> put(tranId: Long, store: String, key: String, value: T) {
-        val response = client.post("$URI/transaction/$tranId/storage/$store/$key") {
-            contentType(ContentType.Application.Json)
-            setBody(value)
-        }
-    }
-
-    suspend inline fun <reified T> get(tranId: Long, store: String, key: String): T? {
-        val response = client.get("$URI/transaction/$tranId/storage/$store/$key") {
-            accept(ContentType.Application.Json)
+        suspend fun commit() {
+            val response = client.post("$API_URI/transaction/$tranId/commit")
         }
 
-        return if (response.status == HttpStatusCode.OK) {
-            val obj: T = response.body()
-            obj
-        } else {
-            null
+        suspend fun rollback() {
+            val response = client.post("$API_URI/transaction/$tranId/rollback")
         }
-    }
 
-    suspend fun <T> delete(tranId: Long, store: String, key: String): Boolean {
-        val response = client.delete("$URI/transaction/$tranId/storage/$store/$key")
-        return true
+        suspend inline fun <reified T> put(store: String, key: String, value: T) {
+            if (readOnly) throw IllegalStateException("Transaction is read-only")
+
+            val response = client.put("$API_URI/transaction/$tranId/storage/$store/$key") {
+                contentType(ContentType.Application.Cbor)
+                setBody(value)
+            }
+            if (response.status == HttpStatusCode.BadRequest) {
+                val failureResponse = response.body<FailureResponse>()
+                throw IllegalStateException(failureResponse.message)
+            }
+        }
+
+        suspend inline fun <reified T> get(store: String, key: String): T? {
+            val response = client.get("$API_URI/transaction/$tranId/storage/$store/$key") {
+                accept(ContentType.Application.Cbor)
+            }
+
+            if (response.status == HttpStatusCode.OK) {
+                val obj: T = response.body()
+                return obj
+            } else if (response.status == HttpStatusCode.NotFound) {
+                return null
+            } else throw IllegalStateException()
+        }
+
+        suspend fun delete(store: String, key: String): Boolean {
+            if (readOnly) throw IllegalStateException("Transaction is read-only")
+
+            val response = client.delete("$API_URI/transaction/$tranId/storage/$store/$key")
+            if (response.status == HttpStatusCode.OK) {
+                return true
+            } else if (response.status == HttpStatusCode.NotFound) {
+                return false
+            } else throw IllegalStateException()
+        }
     }
 }

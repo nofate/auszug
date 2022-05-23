@@ -24,7 +24,6 @@ repositories {
 
 val ktorVersion = "2.0.0"
 dependencies {
-    testImplementation(kotlin("test"))
     implementation(kotlin("stdlib-jdk8"))
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.1")
     implementation("io.ktor:ktor-server-core:$ktorVersion")
@@ -37,6 +36,13 @@ dependencies {
     implementation("org.jetbrains.xodus:xodus-entity-store:2.0.1")
     implementation("org.apache.logging.log4j:log4j-core:2.17.2")
     implementation("org.apache.logging.log4j:log4j-slf4j-impl:2.17.2")
+    implementation("io.github.microutils:kotlin-logging:1.7.9")
+    implementation(project(":common"))
+
+    testImplementation(kotlin("test"))
+    testImplementation("io.ktor:ktor-server-test-host:$ktorVersion")
+    testImplementation("io.ktor:ktor-serialization-kotlinx-cbor:$ktorVersion")
+    testImplementation("io.ktor:ktor-client-content-negotiation:$ktorVersion")
 }
 
 tasks.test {

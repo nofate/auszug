@@ -4,6 +4,8 @@ import auszug.auth.Role
 import auszug.auth.UserRolePrincipal
 import auszug.storage.TransactionKey
 import auszug.storage.XodusStorage
+import auzug.common.API_PATH
+import auzug.common.TransactionResponse
 import io.ktor.http.*
 import io.ktor.server.application.*
 import io.ktor.server.auth.*
@@ -11,10 +13,6 @@ import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import kotlinx.serialization.Serializable
-
-
-@Serializable
-data class TransactionResponse(val tranId: Long)
 
 
 fun createTransactionKey(call: ApplicationCall): TransactionKey {
@@ -33,13 +31,14 @@ fun ensurePrincipal(call: ApplicationCall): UserRolePrincipal {
 }
 
 fun Route.storageRouting(xodusStorage: XodusStorage) {
-    route("/v1") {
+    route(API_PATH) {
 
         route("/transaction") {
             post() {
                 val (username, role) = ensurePrincipal(call)
-                val tranId = xodusStorage.startTransaction(username, role == Role.READ_ONLY)
-                call.respond(HttpStatusCode.Created, TransactionResponse(tranId))
+                val readOnly = role == Role.READ_ONLY
+                val tranId = xodusStorage.startTransaction(username, readOnly)
+                call.respond(HttpStatusCode.Created, TransactionResponse(tranId, readOnly))
             }
 
             route("/{tranId}") {
@@ -60,25 +59,28 @@ fun Route.storageRouting(xodusStorage: XodusStorage) {
                         val storeName = call.parameters["storeName"] ?: throw IllegalArgumentException()
                         val value = xodusStorage.get(createTransactionKey(call), storeName, key)
                         if (value != null) {
-                            call.respondText(value, ContentType.Application.Json)
+                            call.respondBytes(value, ContentType.Application.Cbor)
                         } else {
                             call.respond(HttpStatusCode.NotFound)
                         }
                     }
 
-                    post("/{storeName}/{id}") {
+                    put("/{storeName}/{id}") {
                         val key = call.parameters["id"] ?: throw IllegalArgumentException()
                         val storeName = call.parameters["storeName"] ?: throw IllegalArgumentException()
-                        val body = call.receiveText()
-                        xodusStorage.put(createTransactionKey(call), key, storeName, body)
-                        call.respond(HttpStatusCode.Created)
+                        val body = call.receive<ByteArray>()
+                        xodusStorage.put(createTransactionKey(call), storeName, key, body)
+                        call.respond(HttpStatusCode.OK)
                     }
 
                     delete("/{storeName}/{id}") {
                         val key = call.parameters["id"] ?: throw IllegalArgumentException()
                         val storeName = call.parameters["storeName"] ?: throw IllegalArgumentException()
-                        xodusStorage.delete(createTransactionKey(call), storeName, key)
-                        call.respond(HttpStatusCode.OK)
+                        if (xodusStorage.delete(createTransactionKey(call), storeName, key)) {
+                            call.respond(HttpStatusCode.OK)
+                        } else {
+                            call.respond(HttpStatusCode.NotFound)
+                        }
                     }
                 }
             }
