@@ -16,7 +16,7 @@ data class TransactionKey(val username: String, val transactionId: Long)
 
 class XodusStorage(inMemory: Boolean, dataDir: String?) {
 
-    val log = LoggerFactory.getLogger(XodusStorage::class.java)
+    private val log = LoggerFactory.getLogger(XodusStorage::class.java)
     private val environment = createEnvironment(inMemory, dataDir)
     private val transactions = ConcurrentHashMap<TransactionKey, Transaction>()
     private val idCounter = AtomicLong(0)
@@ -59,7 +59,7 @@ class XodusStorage(inMemory: Boolean, dataDir: String?) {
             val store = environment.openStore(storeName, StoreConfig.WITHOUT_DUPLICATES, it)
             return store.get(it, StringBinding.stringToEntry(key))?.let { byteIterable ->
                 val result = byteIterable.bytesUnsafe
-                log.debug("Found {}:{}, {}", storeName, key, result.size)
+                log.debug("Found {}:{}, {} bytes", storeName, key, result.size)
                 return result
             }
         }

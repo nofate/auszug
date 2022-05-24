@@ -153,7 +153,6 @@ internal class StorageAppKtTest {
         val client = getClient(readOnly = true)
         val store = "Foo"
         val key = "foo1"
-        val testedRecord = Foo("foo", true, 1)
         val storageClient = StorageClient("", client)
 
         assertFailsWith<IllegalStateException> {

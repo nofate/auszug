@@ -10,10 +10,11 @@ import io.ktor.server.auth.*
 import io.ktor.server.plugins.contentnegotiation.*
 import io.ktor.server.routing.*
 import io.ktor.util.*
+import kotlin.io.path.Path
 
 
-private const val STORAGE_INMEMORY = "storage.inMemory"
-private const val STORAGE_PATH = "storage.path"
+private const val PROP_STORAGE_INMEMORY = "storage.inMemory"
+private const val STORAGE_PATH = "data"
 private const val SALT_SUFFIX = "auszug"
 
 
@@ -24,8 +25,8 @@ fun Application.storageModule() {
     )
 
     val xodusStorage = XodusStorage(
-        environment.config.property(STORAGE_INMEMORY).getString().toBooleanStrict(),
-        environment.config.propertyOrNull(STORAGE_PATH)?.getString()
+        environment.config.property(PROP_STORAGE_INMEMORY).getString().toBooleanStrict(),
+        Path(System.getProperty("user.dir"), STORAGE_PATH).toString()
     )
 
     install(ContentNegotiation) {

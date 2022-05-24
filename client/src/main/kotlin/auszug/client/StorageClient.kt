@@ -18,7 +18,7 @@ import io.ktor.serialization.kotlinx.json.*
 
 class StorageClient(baseUri: String, val client: HttpClient) {
 
-    val API_URI = "${baseUri}${API_PATH}"
+    val apiUri = "${baseUri}${API_PATH}"
 
     constructor(baseUri: String, username: String, password: String)
             : this(baseUri, HttpClient(CIO) {
@@ -41,7 +41,7 @@ class StorageClient(baseUri: String, val client: HttpClient) {
 
 
     suspend fun startTransaction(): ClientTransaction {
-        val response = client.post("$API_URI/transaction")
+        val response = client.post("$apiUri/transaction")
         val tran: TransactionResponse = response.body()
         return ClientTransaction(tran.tranId, tran.readOnly)
     }
@@ -49,17 +49,18 @@ class StorageClient(baseUri: String, val client: HttpClient) {
     inner class ClientTransaction(val tranId: Long, val readOnly: Boolean) {
 
         suspend fun commit() {
-            val response = client.post("$API_URI/transaction/$tranId/commit")
+            if (readOnly) throw IllegalStateException("Transaction is read-only")
+            client.post("$apiUri/transaction/$tranId/commit")
         }
 
         suspend fun rollback() {
-            val response = client.post("$API_URI/transaction/$tranId/rollback")
+            client.post("$apiUri/transaction/$tranId/rollback")
         }
 
         suspend inline fun <reified T> put(store: String, key: String, value: T) {
             if (readOnly) throw IllegalStateException("Transaction is read-only")
 
-            val response = client.put("$API_URI/transaction/$tranId/storage/$store/$key") {
+            val response = client.put("$apiUri/transaction/$tranId/storage/$store/$key") {
                 contentType(ContentType.Application.Cbor)
                 setBody(value)
             }
@@ -70,7 +71,7 @@ class StorageClient(baseUri: String, val client: HttpClient) {
         }
 
         suspend inline fun <reified T> get(store: String, key: String): T? {
-            val response = client.get("$API_URI/transaction/$tranId/storage/$store/$key") {
+            val response = client.get("$apiUri/transaction/$tranId/storage/$store/$key") {
                 accept(ContentType.Application.Cbor)
             }
 
@@ -85,7 +86,7 @@ class StorageClient(baseUri: String, val client: HttpClient) {
         suspend fun delete(store: String, key: String): Boolean {
             if (readOnly) throw IllegalStateException("Transaction is read-only")
 
-            val response = client.delete("$API_URI/transaction/$tranId/storage/$store/$key")
+            val response = client.delete("$apiUri/transaction/$tranId/storage/$store/$key")
             if (response.status == HttpStatusCode.OK) {
                 return true
             } else if (response.status == HttpStatusCode.NotFound) {
